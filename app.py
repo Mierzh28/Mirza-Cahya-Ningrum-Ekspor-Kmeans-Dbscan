@@ -15,18 +15,31 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
 
+# Menambahkan background gambar
+st.markdown(
+    """
+    <style>
+        .reportview-container {
+            background: url('https://your-image-link.com') no-repeat center center fixed;
+            background-size: cover;
+        }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
 # Menambahkan background warna dan font custom
 st.markdown(
     """
     <style>
         .reportview-container {
-            background-color: #f0f0f0;
+            background-color: #E3BC9A;
         }
         body {
             font-family: 'Arial', sans-serif;
         }
         .stButton > button {
-            background-color: #4CAF50;
+            background-color: #BC9E82;
             color: white;
             font-size: 15px;
             padding: 10px 24px;
@@ -53,7 +66,7 @@ if uploaded_file is not None:
 
         # Tampilkan data pertama untuk melihat preview
         st.subheader("Data Mentah")
-        st.write(df.head())  # Menampilkan 5 baris pertama dari dataset
+        st.write(df.head(11))
 
         # Preprocessing data: Hapus nilai yang kosong dan lakukan standarasi
         df_clean = df.copy()
