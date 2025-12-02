@@ -31,7 +31,7 @@ if uploaded_file is not None:
     st.write(df.columns)
 
     # Pastikan kolom 'Nama Perusahaan' ada
-    if 'Nama Perusahaan' in df.columns:
+    if 'Nama_Perusahaan' in df.columns:
         # Membersihkan data untuk analisis
         df['FOB_USD'] = pd.to_numeric(df['FOB_USD'], errors='coerce')
         df['Qty'] = pd.to_numeric(df['Qty'], errors='coerce')
@@ -39,7 +39,7 @@ if uploaded_file is not None:
 
         # Menampilkan perusahaan dengan transaksi terbanyak
         st.markdown("### Perusahaan yang Sering Melakukan Transaksi")
-        transaksi_perusahaan = df.groupby('Nama Perusahaan').size().reset_index(name='Jumlah Transaksi')
+        transaksi_perusahaan = df.groupby('Nama_Perusahaan').size().reset_index(name='Jumlah Transaksi')
         transaksi_perusahaan_sorted = transaksi_perusahaan.sort_values(by='Jumlah Transaksi', ascending=False)
         
         st.write("Berikut adalah perusahaan yang sering melakukan transaksi, diurutkan berdasarkan jumlah transaksi terbanyak:")
