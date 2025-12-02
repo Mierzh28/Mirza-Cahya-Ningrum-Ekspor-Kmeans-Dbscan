@@ -100,7 +100,7 @@ for k in K_range:
     km.fit(X_scaled)
     inertia.append(km.inertia_)
 
-fig, ax = plt.subplots()
+fig, ax = plt.subplots(figsize=(5, 4))
 ax.plot(K_range, inertia, marker="o")
 ax.set_xlabel("Jumlah Cluster (k)")
 ax.set_ylabel("Inertia")
@@ -124,7 +124,7 @@ if k_optimal > 1:
     st.write(f"Silhouette Score (k={k_optimal}): **{sil:.3f}**")
 
 # Scatter plot cluster
-fig, ax = plt.subplots(figsize=(8, 6))
+fig, ax = plt.subplots(figsize=(5, 4))
 sns.scatterplot(
     data=df_cluster,
     x="FOB_USD",
@@ -139,3 +139,54 @@ ax.set_xlabel("FOB_USD")
 ax.set_ylabel("Qty")
 plt.legend(title="Cluster")
 st.pyplot(fig)
+
+# === RINGKASAN RANGE SETIAP CLUSTER (UMUM) ===
+st.subheader("Ringkasan Range Setiap Cluster")
+
+# daftar fitur yang dipakai clustering
+feature_cols = ["FOB_USD", "Qty"]
+
+# hitung statistik per cluster (min, max, mean, median)
+cluster_stats = (
+    df_cluster
+    .groupby("Cluster")[feature_cols]
+    .agg(["min", "max", "mean", "median"])
+    .round(2)
+)
+
+st.write("Tabel berikut menunjukkan rentang nilai (min–max) dan rata-rata untuk setiap cluster:")
+st.dataframe(cluster_stats)
+
+# opsional: ubah jadi format lebih rapi (1 level kolom)
+cluster_stats_flat = cluster_stats.copy()
+cluster_stats_flat.columns = [f"{col[0]}_{col[1]}" for col in cluster_stats.columns]
+cluster_stats_flat = cluster_stats_flat.reset_index()
+
+# tampilkan juga dalam bentuk teks ringkas per cluster
+st.markdown("### Penjelasan Otomatis Per Cluster")
+
+for _, row in cluster_stats_flat.iterrows():
+    c = int(row["Cluster"])
+    fob_min = row["FOB_USD_min"]
+    fob_max = row["FOB_USD_max"]
+    qty_min = row["Qty_min"]
+    qty_max = row["Qty_max"]
+    fob_mean = row["FOB_USD_mean"]
+    qty_mean = row["Qty_mean"]
+
+    st.markdown(
+        f"""
+**Cluster {c}**
+
+- Range Qty: **{qty_min:.0f} – {qty_max:.0f}**
+- Range FOB_USD: **{fob_min:,.2f} – {fob_max:,.2f}**
+- Rata-rata Qty: **{qty_mean:.0f}**
+- Rata-rata FOB_USD: **{fob_mean:,.2f}**
+
+Interpretasi umum:
+Cluster {c} merepresentasikan kelompok perusahaan dengan rata-rata nilai ekspor (FOB) sekitar **{fob_mean:,.2f} USD** 
+dan rata-rata jumlah barang sekitar **{qty_mean:.0f} unit**, dengan variasi dari **{qty_min:.0f}–{qty_max:.0f}** untuk Qty 
+dan **{fob_min:,.2f}–{fob_max:,.2f} USD** untuk FOB_USD.
+"""
+    )
+
