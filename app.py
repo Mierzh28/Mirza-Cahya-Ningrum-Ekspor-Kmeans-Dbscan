@@ -22,18 +22,6 @@ if uploaded_file is None:
     st.info("Silakan unggah file CSV / Excel dulu.")
     st.stop()
 
-# === BACA DATA ===
-if uploaded_file.name.endswith(".csv"):
-    df = pd.read_csv(uploaded_file)
-else:
-    df = pd.read_excel(uploaded_file)
-
-st.subheader("Preview Data")
-st.dataframe(df.head())
-
-st.write("Nama kolom di data:")
-st.write(list(df.columns))
-
 # pastikan kolom wajib ada
 required_cols = ["Nama_Perusahaan", "FOB_USD", "Qty"]
 missing = [c for c in required_cols if c not in df.columns]
