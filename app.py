@@ -15,35 +15,41 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
 
-# Menambahkan background gambar
-st.markdown(
-    """
-    <style>
-        .reportview-container {
-            background: url('https://your-image-link.com') no-repeat center center fixed;
-            background-size: cover;
-        }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
-
 # Menambahkan background warna dan font custom
 st.markdown(
     """
     <style>
+        /* Menambahkan background warna */
         .reportview-container {
-            background-color: #E3BC9A;
+            background-color: #f0f0f0;  /* Ganti dengan warna yang kamu inginkan */
         }
+
+        /* Mengubah font di seluruh aplikasi */
         body {
             font-family: 'Arial', sans-serif;
         }
+
+        /* Mengubah tampilan button */
         .stButton > button {
-            background-color: #BC9E82;
+            background-color: #4CAF50;  /* Ganti dengan warna pilihanmu */
             color: white;
             font-size: 15px;
             padding: 10px 24px;
             border-radius: 8px;
+        }
+
+        /* Mengubah tampilan tabel data */
+        .stDataFrame tbody tr:nth-child(odd) {
+            background-color: #e0e0e0;  /* Ganti dengan warna tabel */
+        }
+
+        .stDataFrame tbody tr:nth-child(even) {
+            background-color: #f9f9f9;  /* Ganti dengan warna tabel */
+        }
+
+        /* Ganti warna pada sidebar */
+        .sidebar .sidebar-content {
+            background-color: #f0f0f0;
         }
     </style>
     """,
@@ -66,7 +72,7 @@ if uploaded_file is not None:
 
         # Tampilkan data pertama untuk melihat preview
         st.subheader("Data Mentah")
-        st.write(df.head(11))
+        st.write(df.head())  # Menampilkan 5 baris pertama dari dataset
 
         # Preprocessing data: Hapus nilai yang kosong dan lakukan standarasi
         df_clean = df.copy()
@@ -95,13 +101,13 @@ if uploaded_file is not None:
                 x=df_clean["FOB_USD"],
                 y=df_clean["Qty"],
                 hue=df_clean["Cluster"],
-                palette="viridis",
+                palette="Set2",  # Ganti dengan palette yang lebih menarik
                 s=100,
                 ax=ax
             )
-            ax.set_title("Visualisasi Clustering berdasarkan Transaksi Ekspor")
-            ax.set_xlabel("Nilai FOB (USD)")
-            ax.set_ylabel("Jumlah Transaksi")
+            ax.set_title("Visualisasi Clustering berdasarkan Transaksi Ekspor", fontsize=14)
+            ax.set_xlabel("Nilai FOB (USD)", fontsize=12)
+            ax.set_ylabel("Jumlah Transaksi", fontsize=12)
             st.pyplot(fig)
 
             # Hitung dan tampilkan Silhouette Score
@@ -115,7 +121,7 @@ if uploaded_file is not None:
             top_companies = company_transactions.sort_values(by="Jumlah_Transaksi", ascending=False).head(10)
 
             plt.figure(figsize=(12, 7))
-            sns.barplot(x="Jumlah_Transaksi", y="Nama_Perusahaan", data=top_companies, palette="viridis")
+            sns.barplot(x="Jumlah_Transaksi", y="Nama_Perusahaan", data=top_companies, palette="Blues")
             plt.title("Top 10 Perusahaan dengan Transaksi Terbanyak")
             plt.xlabel("Jumlah Transaksi")
             plt.ylabel("Nama Perusahaan")
