@@ -30,7 +30,7 @@ if uploaded_file is not None:
     st.write("Nama kolom yang tersedia dalam dataset:")
     st.write(df.columns)
 
-    # Menangani data yang tidak valid (NaN) pada kolom 'FOB_USD' dan 'Qty'
+    # Membersihkan data untuk analisis
     df['FOB_USD'] = pd.to_numeric(df['FOB_USD'], errors='coerce')
     df['Qty'] = pd.to_numeric(df['Qty'], errors='coerce')
     df = df.dropna(subset=['FOB_USD', 'Qty'])  # Menghapus NaN
@@ -52,48 +52,46 @@ if uploaded_file is not None:
     scaler = StandardScaler()
     scaled_features = scaler.fit_transform(df_clean)
 
+    # Menentukan jumlah cluster menggunakan metode Elbow
+    inertia = []
+    for i in range(1, 11):
+        kmeans = KMeans(n_clusters=i, random_state=42)
+        kmeans.fit(scaled_features)
+        inertia.append(kmeans.inertia_)
+
+    # Visualisasi Elbow Method
+    st.markdown("### Metode Elbow untuk Menentukan Jumlah Cluster")
+    fig, ax = plt.subplots()
+    ax.plot(range(1, 11), inertia, marker='o', linestyle='-', color='b')
+    ax.set_title('Elbow Method untuk Menentukan Jumlah Cluster')
+    ax.set_xlabel('Jumlah Cluster')
+    ax.set_ylabel('Inertia')
+    st.pyplot(fig)
+
     # Melakukan KMeans clustering
-    kmeans = KMeans(n_clusters=3, random_state=42)
+    kmeans = KMeans(n_clusters=3, random_state=42)  # Misalnya K=3 setelah evaluasi Elbow
     df_clean['Cluster'] = kmeans.fit_predict(scaled_features)
 
     # Menampilkan hasil clustering dalam bentuk tabel
     st.write("Hasil Clustering:")
     st.dataframe(df_clean.head())
 
-    # Visualisasi Pie Chart
-    st.markdown("### Visualisasi Pie Chart Berdasarkan Cluster")
-    cluster_counts = df_clean['Cluster'].value_counts()
-    fig, ax = plt.subplots()
-    ax.pie(cluster_counts, labels=cluster_counts.index, autopct='%1.1f%%', startangle=90, colors=sns.color_palette("Set3", len(cluster_counts)))
-    ax.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
+    # Visualisasi hasil clustering
+    st.markdown("### Visualisasi Hasil Clustering")
+    fig, ax = plt.subplots(figsize=(8, 6))
+    sns.scatterplot(x=df_clean['FOB_USD'], y=df_clean['Qty'], hue=df_clean['Cluster'], palette='viridis', s=100)
+    ax.set_title("Visualisasi Clustering Perusahaan Berdasarkan Transaksi Ekspor")
+    ax.set_xlabel("Nilai FOB (USD)")
+    ax.set_ylabel("Jumlah Transaksi")
+    plt.legend(title='Cluster', loc='upper right')
     st.pyplot(fig)
 
-    # Visualisasi Bar Chart
-    st.markdown("### Visualisasi Bar Chart Berdasarkan Cluster")
-    cluster_summary = df_clean.groupby('Cluster').agg({'FOB_USD': 'mean', 'Qty': 'mean'}).reset_index()
-    fig, ax = plt.subplots()
-    sns.barplot(data=cluster_summary, x='Cluster', y='FOB_USD', palette='Set2')
-    ax.set_title("Rata-rata Nilai Ekspor (FOB) per Cluster")
-    st.pyplot(fig)
-
-    # Menampilkan statistik
+    # Menampilkan statistik cluster
     st.markdown("### Statistik Cluster")
     st.write(df_clean.groupby('Cluster').agg({
         'FOB_USD': ['mean', 'std', 'min', 'max'],
         'Qty': ['mean', 'std', 'min', 'max']
     }))
 
-    # Penjelasan untuk user
-    st.markdown("""
-    ### Penjelasan untuk User:
-
-    **Pie Chart** menunjukkan distribusi persentase jumlah item yang masuk ke dalam masing-masing cluster. Setiap cluster berisi produk dengan karakteristik yang serupa.
-
-    **Bar Chart** menampilkan rata-rata nilai FOB dari produk dalam setiap cluster. Ini memberi gambaran seberapa besar kontribusi ekspor dari masing-masing cluster.
-
-    **Statistik Cluster** menunjukkan informasi lebih detail seperti rata-rata, deviasi standar, nilai minimum, dan maksimum dari nilai FOB dan jumlah ekspor untuk masing-masing cluster.
-
-    Anda dapat menggunakan informasi ini untuk memahami produk mana yang memiliki kontribusi terbesar terhadap nilai ekspor dan produk mana yang membutuhkan perhatian lebih.
-    """)
 else:
     st.warning("Silakan unggah file CSV atau Excel terlebih dahulu.")
