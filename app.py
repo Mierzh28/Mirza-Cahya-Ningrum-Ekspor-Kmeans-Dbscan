@@ -35,6 +35,12 @@ if uploaded_file is not None:
 
         # Preprocessing data: Hapus nilai yang kosong dan lakukan standarasi
         df_clean = df.copy()
+
+        # Menghapus koma dan mengonversi kolom yang berisi angka dalam format string
+        df_clean['FOB_USD'] = df_clean['FOB_USD'].replace({',': ''}, regex=True).astype(float)
+        df_clean['Qty'] = df_clean['Qty'].replace({',': ''}, regex=True).astype(float)
+
+        # Hapus nilai yang kosong setelah konversi
         df_clean.fillna(df_clean.mean(numeric_only=True), inplace=True)
 
         # Pastikan kolom FOB_USD dan Qty ada
@@ -47,21 +53,39 @@ if uploaded_file is not None:
             kmeans = KMeans(n_clusters=3, random_state=42)
             df_clean["Cluster"] = kmeans.fit_predict(scaled)
 
-            st.subheader("Scatter Plot Clustering")
-            fig, ax = plt.subplots()
+            # Visualisasi Scatter Plot untuk Clustering
+            st.subheader("Visualisasi Clustering berdasarkan Nilai FOB dan Jumlah Transaksi")
+            fig, ax = plt.subplots(figsize=(8, 6))
             sns.scatterplot(
                 x=df_clean["FOB_USD"],
                 y=df_clean["Qty"],
                 hue=df_clean["Cluster"],
                 palette="viridis",
-                s=70,
+                s=100,
                 ax=ax
             )
+            ax.set_title("Visualisasi Clustering berdasarkan Transaksi Ekspor")
+            ax.set_xlabel("Nilai FOB (USD)")
+            ax.set_ylabel("Jumlah Transaksi")
             st.pyplot(fig)
 
             # Hitung dan tampilkan Silhouette Score
             sil = silhouette_score(scaled, df_clean["Cluster"])
             st.write(f"**Silhouette Score:** {sil:.3f}")
+
+            # Visualisasi Top 10 Perusahaan dengan Transaksi Terbanyak (Bar Plot)
+            st.subheader("Top 10 Perusahaan dengan Transaksi Terbanyak")
+            company_transactions = df_clean.groupby("Nama_Perusahaan")["Qty"].sum().reset_index()
+            company_transactions.columns = ['Nama_Perusahaan', 'Jumlah_Transaksi']
+            top_companies = company_transactions.sort_values(by="Jumlah_Transaksi", ascending=False).head(10)
+
+            plt.figure(figsize=(12, 7))
+            sns.barplot(x="Jumlah_Transaksi", y="Nama_Perusahaan", data=top_companies, palette="viridis")
+            plt.title("Top 10 Perusahaan dengan Transaksi Terbanyak")
+            plt.xlabel("Jumlah Transaksi")
+            plt.ylabel("Nama Perusahaan")
+            plt.tight_layout()
+            st.pyplot(plt)
 
             # Tampilkan data dengan label cluster
             st.subheader("Data dengan Label Cluster")
