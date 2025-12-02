@@ -7,7 +7,6 @@ Original file is located at
     https://colab.research.google.com/drive/1u-UPIdbLQOPyXW3lEMtKkLPGXn_rTy_S
 """
 
-!pip install streamlit
 !pip install pyngrok
 !pip install openpyxl
 
