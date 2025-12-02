@@ -107,3 +107,5 @@ if uploaded_file is not None:
 
 else:
     st.warning("Silakan unggah file CSV atau Excel terlebih dahulu.")
+
+!streamlit run --server.port 8501 /usr/local/lib/python3.12/dist-packages/colab_kernel_launcher.py
