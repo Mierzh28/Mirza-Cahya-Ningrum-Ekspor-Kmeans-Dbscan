@@ -29,6 +29,25 @@ if missing:
     st.error(f"Kolom berikut tidak ditemukan di dataset: {missing}")
     st.stop()
 
+ === BACA DATA ===
+if uploaded_file.name.endswith(".csv"):
+    df = pd.read_csv(uploaded_file)
+else:
+    df = pd.read_excel(uploaded_file)
+
+st.subheader("Preview Data")
+st.dataframe(df.head())
+
+st.write("Nama kolom di data:")
+st.write(list(df.columns))
+
+# pastikan kolom wajib ada
+required_cols = ["Nama_Perusahaan", "FOB_USD", "Qty"]
+missing = [c for c in required_cols if c not in df.columns]
+if missing:
+    st.error(f"Kolom berikut tidak ditemukan di dataset: {missing}")
+    st.stop()
+
 # === BERSIHKAN & KONVERSI ANGKA ===
 # FOB_USD di file kamu pakai koma sebagai pemisah ribuan, misal '59,113.80'
 df["FOB_USD"] = (
