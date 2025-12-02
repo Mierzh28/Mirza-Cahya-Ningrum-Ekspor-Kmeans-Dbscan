@@ -23,35 +23,27 @@ if uploaded_file is not None:
 
     # Menampilkan data yang diunggah
     st.title("Data Ekspor")
-    st.write("Berikut adalah data yang diunggah: ")
+    st.write("Berikut adalah data yang diunggah:")
     st.dataframe(df.head())
 
-    # Menampilkan penjelasan tentang data
-    st.markdown("""
-    Data yang diunggah berisi informasi tentang transaksi ekspor produk. Berikut adalah penjelasan untuk beberapa kolom penting:
+    # Memastikan bahwa kolom yang digunakan ada dan valid
+    st.write("Nama kolom yang tersedia dalam dataset:")
+    st.write(df.columns)
 
-    - **Tanggal Ekspor**: Tanggal ketika transaksi ekspor dilakukan.
-    - **Nomor Aju**: Nomor referensi untuk transaksi.
-    - **Nama Perusahaan**: Nama perusahaan yang melakukan transaksi.
-    - **Uraian Barang**: Deskripsi barang yang diekspor.
-    - **Jumlah (Qty)**: Jumlah barang yang diekspor.
-    - **FOB (USD)**: Nilai ekspor dalam mata uang USD.
-    
-    ***Analisis ini akan mengelompokkan produk berdasarkan nilai FOB dan jumlah transaksi.***
-    """)
+    # Membersihkan data untuk analisis
+    df['FOB_USD'] = pd.to_numeric(df['FOB_USD'], errors='coerce')
+    df['Qty'] = pd.to_numeric(df['Qty'], errors='coerce')
+    df = df.dropna(subset=['FOB_USD', 'Qty'])  # Menghapus NaN
 
-    # Menghitung jumlah transaksi per perusahaan
+    # Menampilkan perusahaan dengan transaksi terbanyak
     st.markdown("### Perusahaan yang Sering Melakukan Transaksi")
     transaksi_perusahaan = df.groupby('Nama Perusahaan').size().reset_index(name='Jumlah Transaksi')
-    
-    # Mengurutkan perusahaan berdasarkan jumlah transaksi terbanyak
     transaksi_perusahaan_sorted = transaksi_perusahaan.sort_values(by='Jumlah Transaksi', ascending=False)
     
-    # Menampilkan daftar perusahaan yang sering melakukan transaksi
     st.write("Berikut adalah perusahaan yang sering melakukan transaksi, diurutkan berdasarkan jumlah transaksi terbanyak:")
     st.dataframe(transaksi_perusahaan_sorted)
 
-    # Proses Clustering
+    # Preprocessing data untuk clustering
     st.markdown("### Proses Clustering")
     features = ["FOB_USD", "Qty"]
     df_clean = df[features].dropna()  # Remove missing values
