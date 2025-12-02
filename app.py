@@ -7,67 +7,69 @@ Original file is located at
     https://colab.research.google.com/drive/1u-UPIdbLQOPyXW3lEMtKkLPGXn_rTy_S
 """
 
-!pip install pyngrok
-!pip install openpyxl
+import streamlit as st
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import StandardScaler
+from sklearn.cluster import KMeans
+from sklearn.metrics import silhouette_score
 
-# Commented out IPython magic to ensure Python compatibility.
-# %%writefile app.py
-# import streamlit as st
-# import pandas as pd
-# import seaborn as sns
-# import matplotlib.pyplot as plt
-# from sklearn.preprocessing import StandardScaler
-# from sklearn.cluster import KMeans
-# from sklearn.metrics import silhouette_score
-# 
-# st.title("Segmentasi Perusahaan Berdasarkan Transaksi Ekspor (K-Means Clustering)")
-# 
-# uploaded_file = st.file_uploader("Upload File PEB (.xlsx / .csv)", type=["xlsx", "csv"])
-# 
-# if uploaded_file:
-#     try:
-#         df = pd.read_excel(uploaded_file)
-#     except:
-#         df = pd.read_csv(uploaded_file)
-# 
-#     st.subheader("Data Mentah")
-#     st.write(df.head())
-# 
-#     # Preprocessing
-#     df_clean = df.copy()
-#     df_clean.fillna(df_clean.mean(numeric_only=True), inplace=True)
-# 
-#     # Pastikan kolom tersedia
-#     if "FOB_USD" in df_clean.columns and "Qty" in df_clean.columns:
-# 
-#         features = df_clean[["FOB_USD", "Qty"]]
-#         scaler = StandardScaler()
-#         scaled = scaler.fit_transform(features)
-# 
-#         # K-Means
-#         kmeans = KMeans(n_clusters=3, random_state=42)
-#         df_clean["Cluster"] = kmeans.fit_predict(scaled)
-# 
-#         st.subheader("Scatter Plot Clustering")
-#         fig, ax = plt.subplots()
-#         sns.scatterplot(
-#             x=df_clean["FOB_USD"],
-#             y=df_clean["Qty"],
-#             hue=df_clean["Cluster"],
-#             palette="viridis",
-#             s=70,
-#             ax=ax
-#         )
-#         st.pyplot(fig)
-# 
-#         sil = silhouette_score(scaled, df_clean["Cluster"])
-#         st.write(f"**Silhouette Score:** {sil:.3f}")
-# 
-#         st.subheader("Data dengan Label Cluster")
-#         st.write(df_clean[["FOB_USD", "Qty", "Cluster"]])
-# 
-#     else:
-#         st.error("Dataset wajib mengandung kolom: FOB_USD dan Qty")
-# else:
-#     st.info("Silakan upload file untuk memulai analisis.")
-#
+# Judul aplikasi
+st.title("Segmentasi Perusahaan Berdasarkan Transaksi Ekspor (K-Means Clustering)")
+
+# Fungsi untuk meng-upload dataset
+uploaded_file = st.file_uploader("Upload File PEB (.xlsx / .csv)", type=["xlsx", "csv"])
+
+if uploaded_file is not None:
+    try:
+        # Memuat data dari file yang di-upload (Excel atau CSV)
+        if uploaded_file.name.endswith("xlsx"):
+            df = pd.read_excel(uploaded_file)
+        else:
+            df = pd.read_csv(uploaded_file)
+
+        # Tampilkan data pertama untuk melihat preview
+        st.subheader("Data Mentah")
+        st.write(df.head())  # Menampilkan 5 baris pertama dari dataset
+
+        # Preprocessing data: Hapus nilai yang kosong dan lakukan standarasi
+        df_clean = df.copy()
+        df_clean.fillna(df_clean.mean(numeric_only=True), inplace=True)
+
+        # Pastikan kolom FOB_USD dan Qty ada
+        if "FOB_USD" in df_clean.columns and "Qty" in df_clean.columns:
+            features = df_clean[["FOB_USD", "Qty"]]
+            scaler = StandardScaler()
+            scaled = scaler.fit_transform(features)
+
+            # K-Means Clustering
+            kmeans = KMeans(n_clusters=3, random_state=42)
+            df_clean["Cluster"] = kmeans.fit_predict(scaled)
+
+            st.subheader("Scatter Plot Clustering")
+            fig, ax = plt.subplots()
+            sns.scatterplot(
+                x=df_clean["FOB_USD"],
+                y=df_clean["Qty"],
+                hue=df_clean["Cluster"],
+                palette="viridis",
+                s=70,
+                ax=ax
+            )
+            st.pyplot(fig)
+
+            # Hitung dan tampilkan Silhouette Score
+            sil = silhouette_score(scaled, df_clean["Cluster"])
+            st.write(f"**Silhouette Score:** {sil:.3f}")
+
+            # Tampilkan data dengan label cluster
+            st.subheader("Data dengan Label Cluster")
+            st.write(df_clean[["FOB_USD", "Qty", "Cluster"]])
+
+        else:
+            st.error("Dataset wajib mengandung kolom: FOB_USD dan Qty")
+    except Exception as e:
+        st.error(f"Error saat memproses file: {e}")
+else:
+    st.info("Silakan upload file untuk memulai analisis.")
