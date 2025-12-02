@@ -9,6 +9,9 @@ from sklearn.cluster import KMeans
 # Set page layout to wide
 st.set_page_config(layout="wide")
 
+# Menambahkan judul utama pada halaman
+st.title("Analisis Tren Transaksi Ekspor dan Segmentasi Perusahaan Menggunakan Algoritma K-Means Clustering")
+
 # Sidebar - File Upload
 st.sidebar.title("Unggah Data")
 st.sidebar.info("Unggah file CSV atau Excel untuk analisis clustering")
@@ -22,79 +25,99 @@ if uploaded_file is not None:
         df = pd.read_excel(uploaded_file)
 
     # Menampilkan data yang diunggah
-    st.title("Analisis Tren Transaksi Ekspor dan Segmentasi Perusahaan")
     st.write("Berikut adalah data yang diunggah:")
     st.dataframe(df.head())
 
-    # Memeriksa nama kolom yang tersedia
+    # Memeriksa kolom yang ada dalam dataset
     st.write("Nama kolom yang tersedia dalam dataset:")
-    st.write(df.columns)
+    st.write(df.columns)  # Menampilkan nama-nama kolom yang ada
 
-    # Pastikan kolom 'Nama Perusahaan' ada
-    if 'Nama_Perusahaan' in df.columns:
-        # Membersihkan data untuk analisis
-        df['FOB_USD'] = pd.to_numeric(df['FOB_USD'], errors='coerce')
-        df['Qty'] = pd.to_numeric(df['Qty'], errors='coerce')
-        df = df.dropna(subset=['FOB_USD', 'Qty'])  # Menghapus NaN
+    # Membersihkan data untuk analisis
+    df['FOB_USD'] = pd.to_numeric(df['FOB_USD'], errors='coerce')
+    df['Qty'] = pd.to_numeric(df['Qty'], errors='coerce')
+    df = df.dropna(subset=['FOB_USD', 'Qty'])  # Menghapus NaN jika ada
 
-        # Menampilkan perusahaan dengan transaksi terbanyak
-        st.markdown("### Perusahaan yang Sering Melakukan Transaksi")
-        transaksi_perusahaan = df.groupby('Nama_Perusahaan').size().reset_index(name='Jumlah Transaksi')
-        transaksi_perusahaan_sorted = transaksi_perusahaan.sort_values(by='Jumlah Transaksi', ascending=False)
-        
-        st.write("Berikut adalah perusahaan yang sering melakukan transaksi, diurutkan berdasarkan jumlah transaksi terbanyak:")
-        st.dataframe(transaksi_perusahaan_sorted)
+    # Menampilkan perusahaan dengan transaksi terbanyak
+    st.markdown("### Perusahaan yang Sering Melakukan Transaksi")
+    transaksi_perusahaan = df.groupby('Nama Perusahaan').size().reset_index(name='Jumlah Transaksi')
+    transaksi_perusahaan_sorted = transaksi_perusahaan.sort_values(by='Jumlah Transaksi', ascending=False)
+    
+    st.write("Berikut adalah perusahaan yang sering melakukan transaksi, diurutkan berdasarkan jumlah transaksi terbanyak:")
+    st.dataframe(transaksi_perusahaan_sorted)
 
-        # Preprocessing data untuk clustering
-        st.markdown("### Proses Clustering")
-        features = ["FOB_USD", "Qty"]
-        df_clean = df[features].dropna()  # Remove missing values
+    # Preprocessing data untuk clustering
+    st.markdown("### Proses Clustering")
+    features = ["FOB_USD", "Qty"]
+    df_clean = df[features].dropna()  # Remove missing values
 
-        # Normalisasi data (standarisasi)
-        scaler = StandardScaler()
-        scaled_features = scaler.fit_transform(df_clean)
+    # Normalisasi data (standarisasi)
+    scaler = StandardScaler()
+    scaled_features = scaler.fit_transform(df_clean)
 
-        # Menentukan jumlah cluster menggunakan metode Elbow
-        inertia = []
-        for i in range(1, 11):
-            kmeans = KMeans(n_clusters=i, random_state=42)
-            kmeans.fit(scaled_features)
-            inertia.append(kmeans.inertia_)
+    # Menentukan jumlah cluster menggunakan metode Elbow
+    inertia = []
+    for i in range(1, 11):  # Cek cluster dari 1 sampai 10
+        kmeans = KMeans(n_clusters=i, random_state=42)
+        kmeans.fit(scaled_features)
+        inertia.append(kmeans.inertia_)
 
-        # Visualisasi Elbow Method
-        st.markdown("### Metode Elbow untuk Menentukan Jumlah Cluster")
-        fig, ax = plt.subplots()
-        ax.plot(range(1, 11), inertia, marker='o', linestyle='-', color='b')
-        ax.set_title('Elbow Method untuk Menentukan Jumlah Cluster')
-        ax.set_xlabel('Jumlah Cluster')
-        ax.set_ylabel('Inertia')
-        st.pyplot(fig)
+    st.markdown("### Menentukan Jumlah Cluster (Optimal K) dengan Elbow Method")
+    fig, ax = plt.subplots()
+    ax.plot(range(1, 11), inertia, marker='o', linestyle='-', color='b')
+    ax.set_title('Elbow Method untuk Menentukan Jumlah Cluster')
+    ax.set_xlabel('Jumlah Cluster')
+    ax.set_ylabel('Inertia')
+    st.pyplot(fig)
 
-        # Melakukan KMeans clustering
-        kmeans = KMeans(n_clusters=3, random_state=42)  # Misalnya K=3 setelah evaluasi Elbow
-        df_clean['Cluster'] = kmeans.fit_predict(scaled_features)
+    # Menentukan jumlah cluster optimal (misalnya 3) dan melakukan KMeans clustering
+    kmeans = KMeans(n_clusters=3, random_state=42)
+    df_clean['Cluster'] = kmeans.fit_predict(scaled_features)
 
-        # Menampilkan hasil clustering dalam bentuk tabel
-        st.write("Hasil Clustering:")
-        st.dataframe(df_clean.head())
+    # Menampilkan hasil clustering dalam bentuk tabel
+    st.write("Hasil Clustering:")
+    st.dataframe(df_clean.head())
 
-        # Visualisasi hasil clustering
-        st.markdown("### Visualisasi Hasil Clustering")
-        fig, ax = plt.subplots(figsize=(8, 6))
-        sns.scatterplot(x=df_clean['FOB_USD'], y=df_clean['Qty'], hue=df_clean['Cluster'], palette='viridis', s=100)
-        ax.set_title("Visualisasi Clustering Perusahaan Berdasarkan Transaksi Ekspor")
-        ax.set_xlabel("Nilai FOB (USD)")
-        ax.set_ylabel("Jumlah Transaksi")
-        plt.legend(title='Cluster', loc='upper right')
-        st.pyplot(fig)
+    # Visualisasi Hasil Clustering
+    st.markdown("### Visualisasi Hasil Clustering")
+    fig, ax = plt.subplots(figsize=(8, 6))
+    sns.scatterplot(data=df_clean, x='FOB_USD', y='Qty', hue='Cluster', palette='viridis', s=100)
+    ax.set_title("Visualisasi Clustering Perusahaan Berdasarkan Transaksi Ekspor")
+    ax.set_xlabel('Nilai FOB (USD)')
+    ax.set_ylabel('Jumlah Transaksi')
+    plt.legend(title='Cluster', loc='upper right')
+    st.pyplot(fig)
 
-        # Menampilkan statistik cluster
-        st.markdown("### Statistik Cluster")
-        st.write(df_clean.groupby('Cluster').agg({
-            'FOB_USD': ['mean', 'std', 'min', 'max'],
-            'Qty': ['mean', 'std', 'min', 'max']
-        }))
-    else:
-        st.error("Kolom 'Nama Perusahaan' tidak ditemukan dalam dataset. Pastikan kolom tersebut ada dan memiliki data yang valid.")
+    # Evaluasi Hasil Clustering menggunakan Silhouette Score
+    from sklearn.metrics import silhouette_score
+    sil_score = silhouette_score(scaled_features, df_clean['Cluster'])
+    st.write(f'Silhouette Score: {sil_score:.3f}')
+
+    # Visualisasi Perusahaan dengan Transaksi Terbanyak
+    st.markdown("### Top 10 Perusahaan dengan Transaksi Terbanyak")
+    company_transactions = df_clean['Nama Perusahaan'].value_counts().reset_index()
+    company_transactions.columns = ['Nama Perusahaan', 'Jumlah Transaksi']
+    top_companies = company_transactions.head(10)
+
+    fig, ax = plt.subplots(figsize=(12, 7))
+    sns.barplot(x='Jumlah Transaksi', y='Nama Perusahaan', data=top_companies, palette='viridis')
+    ax.set_title("Top 10 Perusahaan dengan Transaksi Terbanyak")
+    ax.set_xlabel('Jumlah Transaksi')
+    ax.set_ylabel('Nama Perusahaan')
+    plt.tight_layout()
+    st.pyplot(fig)
+
+    # Penjelasan untuk user
+    st.markdown("""  
+    ### Penjelasan untuk User:
+
+    **Pie Chart** menunjukkan distribusi persentase jumlah item yang masuk ke dalam masing-masing cluster. Setiap cluster berisi produk dengan karakteristik yang serupa.
+
+    **Bar Chart** menampilkan rata-rata nilai FOB dari produk dalam setiap cluster. Ini memberi gambaran seberapa besar kontribusi ekspor dari masing-masing cluster.
+
+    **Statistik Cluster** menunjukkan informasi lebih detail seperti rata-rata, deviasi standar, nilai minimum, dan maksimum dari nilai FOB dan jumlah ekspor untuk masing-masing cluster.
+
+    Anda dapat menggunakan informasi ini untuk memahami produk mana yang memiliki kontribusi terbesar terhadap nilai ekspor dan produk mana yang membutuhkan perhatian lebih.
+    """)
+
 else:
     st.warning("Silakan unggah file CSV atau Excel terlebih dahulu.")
