@@ -47,7 +47,7 @@ if uploaded_file is not None:
         if 'FOB_USD' not in df.columns or 'Qty' not in df.columns:
             st.error("Kolom 'FOB_USD' atau 'Qty' tidak ditemukan dalam data. Silakan periksa file Anda.")
         else:
-            # Menangani tipe data yang salah jika ada (misalnya mengkonversi kolom menjadi tipe numerik)
+            # Menghapus nilai non-numerik di kolom yang diperlukan
             df['FOB_USD'] = pd.to_numeric(df['FOB_USD'], errors='coerce')
             df['Qty'] = pd.to_numeric(df['Qty'], errors='coerce')
 
