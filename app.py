@@ -9,9 +9,6 @@ from sklearn.cluster import KMeans
 # Set page layout to wide
 st.set_page_config(layout="wide")
 
-# Menampilkan Judul Aplikasi
-st.title("Penerapan Algoritma K-Means Clustering untuk Segmentasi Perusahaan Berdasarkan Transaksi Ekspor")
-
 # Sidebar - File Upload
 st.sidebar.title("Unggah Data")
 st.sidebar.info("Unggah file CSV atau Excel untuk analisis clustering")
@@ -112,4 +109,4 @@ if uploaded_file is not None:
     except Exception as e:
         st.error(f"Terjadi kesalahan saat memproses data: {e}")
 else:
-    st.warning("Silakan unggah file CSV atau Excel terlebih dahulu.")
+    st.warning("Silakan unggah file CSV atau Excel terlebih dahulu")
