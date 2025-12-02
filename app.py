@@ -137,10 +137,9 @@ ax.set_ylabel("Qty")
 plt.legend(title="Cluster")
 st.pyplot(fig)
 
-# === RINGKASAN RANGE SETIAP CLUSTER (UMUM) ===
+# === RINGKASAN RANGE SETIAP CLUSTER (UMUM) TANPA TABEL ===
 st.subheader("Ringkasan Range Setiap Cluster")
 
-# daftar fitur yang dipakai clustering
 feature_cols = ["FOB_USD", "Qty"]
 
 # hitung statistik per cluster (min, max, mean, median)
@@ -151,15 +150,32 @@ cluster_stats = (
     .round(2)
 )
 
-st.write("Tabel berikut menunjukkan rentang nilai (min–max) dan rata-rata untuk setiap cluster:")
-st.dataframe(cluster_stats)
-
-# opsional: ubah jadi format lebih rapi (1 level kolom)
+# flatten kolom multiindex -> jadi satu level
 cluster_stats_flat = cluster_stats.copy()
 cluster_stats_flat.columns = [f"{col[0]}_{col[1]}" for col in cluster_stats.columns]
 cluster_stats_flat = cluster_stats_flat.reset_index()
 
-# tampilkan juga dalam bentuk teks ringkas per cluster
+# landasan teori dulu: menurut siapa cara interpretasi cluster & range
+st.markdown("""
+### Dasar Teoretis Pembagian Range Cluster
+
+Menurut **Hair et al. (2014)**, analisis klaster bertujuan mengelompokkan objek
+ke dalam beberapa cluster sehingga objek di dalam satu cluster bersifat relatif homogen,
+sedangkan antar-cluster heterogen. Profil setiap cluster dapat dijelaskan dengan
+melihat nilai pusat (centroid), rata-rata, serta rentang (minimum–maksimum) dari
+variabel yang digunakan.
+
+**Jain (2010)** menjelaskan bahwa pada algoritma **K-Means**, setiap cluster
+direpresentasikan oleh centroid yang menggambarkan nilai rata-rata variabel pada
+cluster tersebut. Oleh karena itu, interpretasi segmentasi dilakukan dengan
+meninjau distribusi nilai di sekitar centroid, misalnya melalui nilai
+minimum, maksimum, dan rata-rata tiap variabel pada masing-masing cluster.
+
+Mengacu pada kedua rujukan tersebut, pembagian range dan penjelasan cluster
+pada dashboard ini didasarkan pada ringkasan statistik **FOB_USD** dan **Qty**
+(min–max dan mean) untuk setiap label cluster (0, 1, dan 2).
+""")
+
 st.markdown("### Penjelasan Otomatis Per Cluster")
 
 for _, row in cluster_stats_flat.iterrows():
@@ -180,10 +196,5 @@ for _, row in cluster_stats_flat.iterrows():
 - Rata-rata Qty: **{qty_mean:.0f}**
 - Rata-rata FOB_USD: **{fob_mean:,.2f}**
 
-Interpretasi umum:
-Cluster {c} merepresentasikan kelompok perusahaan dengan rata-rata nilai ekspor (FOB) sekitar **{fob_mean:,.2f} USD** 
-dan rata-rata jumlah barang sekitar **{qty_mean:.0f} unit**, dengan variasi dari **{qty_min:.0f}–{qty_max:.0f}** untuk Qty 
-dan **{fob_min:,.2f}–{fob_max:,.2f} USD** untuk FOB_USD.
-"""
-    )
-
+Interpretasi umum:  
+Cluster {c} merepresentasikan kelompok perusahaan dengan rata-rata nilai ekspor (
