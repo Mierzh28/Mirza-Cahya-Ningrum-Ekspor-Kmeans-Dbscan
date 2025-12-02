@@ -156,7 +156,8 @@ cluster_stats_flat.columns = [f"{col[0]}_{col[1]}" for col in cluster_stats.colu
 cluster_stats_flat = cluster_stats_flat.reset_index()
 
 # landasan teori dulu: menurut siapa cara interpretasi cluster & range
-st.markdown("""
+st.markdown(
+    """
 ### Dasar Teoretis Pembagian Range Cluster
 
 Menurut **Hair et al. (2014)**, analisis klaster bertujuan mengelompokkan objek
@@ -174,7 +175,8 @@ minimum, maksimum, dan rata-rata tiap variabel pada masing-masing cluster.
 Mengacu pada kedua rujukan tersebut, pembagian range dan penjelasan cluster
 pada dashboard ini didasarkan pada ringkasan statistik **FOB_USD** dan **Qty**
 (min–max dan mean) untuk setiap label cluster (0, 1, dan 2).
-""")
+"""
+)
 
 st.markdown("### Penjelasan Otomatis Per Cluster")
 
@@ -187,14 +189,17 @@ for _, row in cluster_stats_flat.iterrows():
     fob_mean = row["FOB_USD_mean"]
     qty_mean = row["Qty_mean"]
 
-    st.markdown(
-        f"""
-**Cluster {c}**
+    text = (
+        f"**Cluster {c}**\n\n"
+        f"- Range Qty: **{qty_min:.0f} – {qty_max:.0f}**\n"
+        f"- Range FOB_USD: **{fob_min:,.2f} – {fob_max:,.2f}**\n"
+        f"- Rata-rata Qty: **{qty_mean:.0f}**\n"
+        f"- Rata-rata FOB_USD: **{fob_mean:,.2f}**\n\n"
+        "Interpretasi umum:\n"
+        f"Cluster {c} merepresentasikan kelompok perusahaan dengan rata-rata nilai ekspor (FOB) "
+        f"sekitar **{fob_mean:,.2f} USD** dan rata-rata jumlah barang sekitar **{qty_mean:.0f} unit**, "
+        f"dengan variasi dari **{qty_min:.0f}–{qty_max:.0f}** untuk Qty dan "
+        f"**{fob_min:,.2f}–{fob_max:,.2f} USD** untuk FOB_USD."
+    )
 
-- Range Qty: **{qty_min:.0f} – {qty_max:.0f}**
-- Range FOB_USD: **{fob_min:,.2f} – {fob_max:,.2f}**
-- Rata-rata Qty: **{qty_mean:.0f}**
-- Rata-rata FOB_USD: **{fob_mean:,.2f}**
-
-Interpretasi umum:  
-Cluster {c} merepresentasikan kelompok perusahaan dengan rata-rata nilai ekspor (
+    st.markdown(text)
