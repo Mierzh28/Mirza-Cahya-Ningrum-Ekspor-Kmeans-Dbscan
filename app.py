@@ -205,11 +205,27 @@ eval_df = pd.DataFrame([
 ])
 
 # --- Top 5 perusahaan berdasarkan total_transaksi
-top5 = (
-    agg.sort_values("total_transaksi", ascending=False)
-       .head(5)
-       .copy()
-)
+st.subheader("Top 5 Perusahaan Paling Aktif Berdasarkan Total Transaksi")
+
+# Validasi tambahan (anti kosong)
+if top5.shape[0] == 0:
+    st.warning("Data Top 5 tidak tersedia.")
+else:
+    fig_top5, ax_top5 = plt.subplots(figsize=(8, 5))
+
+    ax_top5.barh(
+        top5["Nama_Perusahaan"],
+        top5["total_transaksi"]
+    )
+
+    ax_top5.set_xlabel("Total Transaksi")
+    ax_top5.set_ylabel("Nama Perusahaan")
+    ax_top5.set_title("Top 5 Perusahaan dengan Transaksi Kepabeanan Tertinggi")
+
+    # Ranking 1 di atas
+    ax_top5.invert_yaxis()
+
+    st.pyplot(fig_top5)
 
 # ---------------------------------------------------------
 # TABS
