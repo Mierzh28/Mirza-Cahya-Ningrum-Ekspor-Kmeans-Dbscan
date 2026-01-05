@@ -17,6 +17,7 @@ from sklearn.cluster import KMeans, DBSCAN
 from sklearn.metrics import silhouette_score, davies_bouldin_score, calinski_harabasz_score
 from sklearn.decomposition import PCA
 
+
 # ---------------------------------------------------------
 # CONFIG
 # ---------------------------------------------------------
@@ -50,7 +51,7 @@ MIN_SAMPLES = st.sidebar.slider("DBSCAN: min_samples", 1, 20, 2)
 
 st.sidebar.header("Opsi Tampilan")
 show_raw = st.sidebar.checkbox("Tampilkan data mentah", value=True)
-show_silhouette_note = st.sidebar.checkbox("Tampilkan catatan evaluasi (silhouette)", value=True)
+show_notes = st.sidebar.checkbox("Tampilkan catatan evaluasi", value=True)
 
 # ---------------------------------------------------------
 # VALIDASI FILE
@@ -72,6 +73,7 @@ if missing_cols:
     st.info(f"Kolom yang tersedia: {df_raw.columns.tolist()}")
     st.stop()
 
+
 # ---------------------------------------------------------
 # FUNCTIONS
 # ---------------------------------------------------------
@@ -81,47 +83,61 @@ def preprocess_and_aggregate(df: pd.DataFrame) -> pd.DataFrame:
     Output: 1 baris = 1 perusahaan.
     """
     df = df.copy()
+
+    # Konversi tanggal
     df["Tanggal Ekspor"] = pd.to_datetime(df["Tanggal Ekspor"], errors="coerce")
+
+    # Buang baris kosong penting
     df = df.dropna(subset=["Nama_Perusahaan", "Tanggal Ekspor"]).copy()
+
+    # Rapikan nama perusahaan
     df["Nama_Perusahaan"] = df["Nama_Perusahaan"].astype(str).str.strip()
+
+    # Ambil bulan
     df["bulan"] = df["Tanggal Ekspor"].dt.to_period("M")
 
+    # Hitung transaksi per bulan per perusahaan
     monthly = (
         df.groupby(["Nama_Perusahaan", "bulan"])
           .size()
           .reset_index(name="transaksi_bulanan")
     )
 
+    # Agregasi final: 1 perusahaan = 1 baris
     agg = monthly.groupby("Nama_Perusahaan").agg(
         total_transaksi=("transaksi_bulanan", "sum"),
         bulan_aktif=("bulan", "nunique"),
         rata_rata_per_bulan=("transaksi_bulanan", "mean"),
-        std_transaksi_bulanan=("transaksi_bulanan", "std")
+        std_transaksi_bulanan=("transaksi_bulanan", "std"),
     ).reset_index()
 
-    # jika perusahaan hanya aktif 1 bulan -> std NaN
+    # Jika hanya aktif 1 bulan -> std NaN -> isi 0
     agg["std_transaksi_bulanan"] = agg["std_transaksi_bulanan"].fillna(0)
+
+    # Pastikan numerik (anti kasus aneh)
+    for c in ["total_transaksi", "bulan_aktif", "rata_rata_per_bulan", "std_transaksi_bulanan"]:
+        agg[c] = pd.to_numeric(agg[c], errors="coerce").fillna(0)
+
     return agg
 
 
 def safe_clustering_metrics(X_scaled: np.ndarray, labels: np.ndarray) -> tuple:
     """
-    Menghitung metrik clustering:
-    - Silhouette (besar lebih baik)
-    - Davies-Bouldin (kecil lebih baik)
-    - Calinski-Harabasz (besar lebih baik)
+    Metrik clustering (valid untuk unsupervised):
+    - Silhouette (lebih besar lebih baik)
+    - Davies-Bouldin (lebih kecil lebih baik)
+    - Calinski-Harabasz (lebih besar lebih baik)
 
-    Untuk DBSCAN: noise (-1) dikeluarkan dari evaluasi jika memungkinkan.
-    Return: (sil, dbi, ch)
+    Untuk DBSCAN: noise (-1) dikeluarkan jika memungkinkan.
     """
     labels = np.array(labels)
     unique = set(labels.tolist())
 
-    # perlu >=2 cluster
+    # Harus ada >= 2 cluster efektif
     if len(unique) <= 1:
         return (np.nan, np.nan, np.nan)
 
-    # DBSCAN: buang noise
+    # Jika ada noise, buang noise untuk evaluasi
     if -1 in unique:
         mask = labels != -1
         if mask.sum() < 2 or len(set(labels[mask].tolist())) <= 1:
@@ -150,26 +166,34 @@ def to_excel_bytes(seg_df: pd.DataFrame,
         top5_df.to_excel(writer, index=False, sheet_name="top5_perusahaan")
     return output.getvalue()
 
+
 # ---------------------------------------------------------
 # PROCESS (AUTO UPDATE)
 # ---------------------------------------------------------
 agg = preprocess_and_aggregate(df_raw)
 
 FEATURES = ["total_transaksi", "bulan_aktif", "rata_rata_per_bulan", "std_transaksi_bulanan"]
+
+# Jika perusahaan terlalu sedikit, stop dengan pesan jelas
+if agg.shape[0] < 2:
+    st.error("Jumlah perusahaan < 2, clustering tidak dapat dilakukan. Coba upload data yang lebih banyak.")
+    st.stop()
+
+# Scaling
 X = agg[FEATURES].values
 X_scaled = StandardScaler().fit_transform(X)
 
-# --- KMeans
+# K-Means
 kmeans = KMeans(n_clusters=K, random_state=42, n_init="auto")
 labels_km = kmeans.fit_predict(X_scaled)
 agg["cluster_kmeans"] = labels_km
 
-# --- DBSCAN
+# DBSCAN
 dbscan = DBSCAN(eps=EPS, min_samples=MIN_SAMPLES)
 labels_db = dbscan.fit_predict(X_scaled)
 agg["cluster_dbscan"] = labels_db
 
-# --- Contingency matrix (confusion-like for clustering)
+# Contingency matrix (confusion-like)
 cont_matrix = pd.crosstab(
     agg["cluster_kmeans"],
     agg["cluster_dbscan"],
@@ -177,11 +201,16 @@ cont_matrix = pd.crosstab(
     colnames=["DBSCAN Cluster"]
 )
 
-# --- Evaluation metrics
+# Evaluasi (pengganti accuracy/loss)
 sil_km, dbi_km, ch_km = safe_clustering_metrics(X_scaled, labels_km)
 sil_db, dbi_db, ch_db = safe_clustering_metrics(X_scaled, labels_db)
+
 noise_count = int((labels_db == -1).sum())
 noise_ratio = float(noise_count / len(labels_db))
+
+# jumlah cluster efektif DBSCAN (tanpa noise)
+dbscan_clusters = sorted(set(labels_db.tolist()))
+dbscan_clusters_no_noise = [c for c in dbscan_clusters if c != -1]
 
 eval_df = pd.DataFrame([
     {
@@ -195,7 +224,7 @@ eval_df = pd.DataFrame([
     },
     {
         "Algoritma": "DBSCAN",
-        "n_clusters": len(set([x for x in labels_db.tolist() if x != -1])),
+        "n_clusters": len(dbscan_clusters_no_noise),
         "Silhouette": sil_db,
         "Davies_Bouldin": dbi_db,
         "Calinski_Harabasz": ch_db,
@@ -204,28 +233,12 @@ eval_df = pd.DataFrame([
     }
 ])
 
-# --- Top 5 perusahaan berdasarkan total_transaksi
-st.subheader("Top 5 Perusahaan Paling Aktif Berdasarkan Total Transaksi")
-
-# Validasi tambahan (anti kosong)
-if top5.shape[0] == 0:
-    st.warning("Data Top 5 tidak tersedia.")
-else:
-    fig_top5, ax_top5 = plt.subplots(figsize=(8, 5))
-
-    ax_top5.barh(
-        top5["Nama_Perusahaan"],
-        top5["total_transaksi"]
-    )
-
-    ax_top5.set_xlabel("Total Transaksi")
-    ax_top5.set_ylabel("Nama Perusahaan")
-    ax_top5.set_title("Top 5 Perusahaan dengan Transaksi Kepabeanan Tertinggi")
-
-    # Ranking 1 di atas
-    ax_top5.invert_yaxis()
-
-    st.pyplot(fig_top5)
+# Top 5 perusahaan
+top5 = (
+    agg.sort_values("total_transaksi", ascending=False)
+       .head(5)
+       .copy()
+)
 
 # ---------------------------------------------------------
 # TABS
@@ -272,23 +285,26 @@ with tab3:
     st.subheader("Perbandingan Akhir K-Means vs DBSCAN")
     st.dataframe(eval_df, use_container_width=True)
 
-    if show_silhouette_note:
+    if show_notes:
         st.caption(
-            "Catatan: Silhouette, Davies-Bouldin, dan Calinski-Harabasz hanya valid jika jumlah cluster efektif ≥ 2. "
-            "Untuk DBSCAN, noise (-1) dikeluarkan dari perhitungan metrik jika memungkinkan."
+            "Catatan evaluasi: Karena ini clustering (unsupervised), tidak ada accuracy/loss klasik. "
+            "Sebagai pengganti digunakan Silhouette (besar lebih baik), Davies–Bouldin (kecil lebih baik), "
+            "Calinski–Harabasz (besar lebih baik). K-Means memiliki Inertia (loss resmi), sedangkan DBSCAN "
+            "dinilai juga dari Noise Ratio (lebih kecil lebih baik)."
         )
 
     st.subheader("Contingency Matrix (Confusion-like) K-Means vs DBSCAN")
     st.dataframe(cont_matrix, use_container_width=True)
 
-    # Visual contingency matrix
     st.markdown("**Visualisasi Contingency Matrix**")
-    fig_cm, ax_cm = plt.subplots(figsize=(6,4))
+    fig_cm, ax_cm = plt.subplots(figsize=(6, 4))
     ax_cm.imshow(cont_matrix.values)
+
     ax_cm.set_xticks(range(len(cont_matrix.columns)))
     ax_cm.set_xticklabels(cont_matrix.columns)
     ax_cm.set_yticks(range(len(cont_matrix.index)))
     ax_cm.set_yticklabels(cont_matrix.index)
+
     ax_cm.set_xlabel("DBSCAN Cluster")
     ax_cm.set_ylabel("K-Means Cluster")
     ax_cm.set_title("Contingency Matrix: K-Means vs DBSCAN")
@@ -301,7 +317,7 @@ with tab3:
 
     st.subheader("DBSCAN Noise/Outlier")
     st.write(f"Noise (-1): **{noise_count}** dari **{len(labels_db)}** perusahaan (**{noise_ratio*100:.2f}%**)")
-    fig_noise, ax_noise = plt.subplots(figsize=(5,5))
+    fig_noise, ax_noise = plt.subplots(figsize=(5, 5))
     ax_noise.pie([len(labels_db) - noise_count, noise_count], labels=["Clustered", "Noise (-1)"], autopct="%1.1f%%")
     ax_noise.set_title("DBSCAN: Proporsi Clustered vs Noise")
     st.pyplot(fig_noise)
@@ -325,14 +341,25 @@ with tab4:
 
     st.pyplot(fig_scatter)
 
+    # -------- TOP 5 CHART (FIXED - PASTI MUNCUL) --------
     st.subheader("Top 5 Perusahaan Paling Aktif (Total Transaksi)")
-    fig_top5, ax_top5 = plt.subplots(figsize=(8,5))
-    ax_top5.barh(top5["Nama_Perusahaan"], top5["total_transaksi"])
-    ax_top5.set_xlabel("Total Transaksi")
-    ax_top5.set_ylabel("Nama Perusahaan")
-    ax_top5.set_title("Top 5 Perusahaan dengan Transaksi Kepabeanan Tertinggi")
-    ax_top5.invert_yaxis()
-    st.pyplot(fig_top5)
+
+    # Kalau perusahaan < 5, tetap tampilkan sebanyak yang ada
+    if top5.shape[0] == 0:
+        st.warning("Top 5 tidak tersedia (data agregasi kosong).")
+    else:
+        fig_top5, ax_top5 = plt.subplots(figsize=(8, 5))
+        ax_top5.barh(top5["Nama_Perusahaan"], top5["total_transaksi"])
+        ax_top5.set_xlabel("Total Transaksi")
+        ax_top5.set_ylabel("Nama Perusahaan")
+        ax_top5.set_title("Top Perusahaan dengan Transaksi Kepabeanan Tertinggi")
+        ax_top5.invert_yaxis()  # ranking 1 di atas
+        st.pyplot(fig_top5)
+
+        st.caption(
+            "Grafik ini menampilkan perusahaan dengan total transaksi tertinggi pada periode data yang dianalisis. "
+            "Perusahaan-perusahaan ini dapat dianggap sebagai mitra paling aktif berdasarkan frekuensi transaksi."
+        )
 
     st.subheader("Visualisasi PCA 2D")
     pca = PCA(n_components=2, random_state=42)
