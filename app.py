@@ -127,4 +127,129 @@ with tab1:
     st.subheader("Data Agregasi (1 baris = 1 perusahaan)")
     st.dataframe(agg, use_container_width=True)
 
-# ---------------------
+# ---------------------------------------------------------
+# TAB 2 – CLUSTERING
+# ---------------------------------------------------------
+with tab2:
+    st.subheader("Hasil Segmentasi Perusahaan")
+    st.dataframe(
+        agg[["Nama_Perusahaan"] + FEATURES + ["cluster_kmeans", "cluster_dbscan"]],
+        use_container_width=True
+    )
+
+# ---------------------------------------------------------
+# TAB 3 – EVALUASI
+# ---------------------------------------------------------
+with tab3:
+    def safe_metrics(X, labels):
+        labels = np.array(labels)
+        unique = set(labels.tolist())
+
+        noise_ratio = float((labels == -1).sum() / len(labels))
+
+        if len(unique) <= 1:
+            return (np.nan, np.nan, np.nan, noise_ratio)
+
+        if -1 in unique:
+            mask = labels != -1
+            if mask.sum() < 2 or len(set(labels[mask])) <= 1:
+                return (np.nan, np.nan, np.nan, noise_ratio)
+            X_use = X[mask]
+            y_use = labels[mask]
+        else:
+            X_use = X
+            y_use = labels
+
+        sil = silhouette_score(X_use, y_use)
+        dbi = davies_bouldin_score(X_use, y_use)
+        ch = calinski_harabasz_score(X_use, y_use)
+
+        return (sil, dbi, ch, noise_ratio)
+
+    sil_km, dbi_km, ch_km, _ = safe_metrics(X_scaled, agg["cluster_kmeans"])
+    sil_db, dbi_db, ch_db, noise_db = safe_metrics(X_scaled, agg["cluster_dbscan"])
+
+    eval_df = pd.DataFrame([
+        {
+            "Algoritma": "K-Means",
+            "Silhouette": sil_km,
+            "Davies_Bouldin": dbi_km,
+            "Calinski_Harabasz": ch_km,
+            "Inertia (Loss)": kmeans.inertia_,
+            "Noise Ratio": np.nan
+        },
+        {
+            "Algoritma": "DBSCAN",
+            "Silhouette": sil_db,
+            "Davies_Bouldin": dbi_db,
+            "Calinski_Harabasz": ch_db,
+            "Inertia (Loss)": np.nan,
+            "Noise Ratio": noise_db
+        }
+    ])
+
+    st.subheader("Perbandingan Akhir K-Means vs DBSCAN")
+    st.dataframe(eval_df, use_container_width=True)
+
+# ---------------------------------------------------------
+# TAB 4 – VISUALISASI
+# ---------------------------------------------------------
+with tab4:
+    st.subheader("Scatter Plot (total_transaksi vs std_transaksi_bulanan)")
+
+    fig, ax = plt.subplots(1, 2, figsize=(12, 5))
+
+    ax[0].scatter(
+        agg["total_transaksi"],
+        agg["std_transaksi_bulanan"],
+        c=agg["cluster_kmeans"]
+    )
+    ax[0].set_title("K-Means")
+    ax[0].set_xlabel("total_transaksi")
+    ax[0].set_ylabel("std_transaksi_bulanan")
+
+    ax[1].scatter(
+        agg["total_transaksi"],
+        agg["std_transaksi_bulanan"],
+        c=agg["cluster_dbscan"]
+    )
+    ax[1].set_title("DBSCAN")
+    ax[1].set_xlabel("total_transaksi")
+    ax[1].set_ylabel("std_transaksi_bulanan")
+
+    st.pyplot(fig)
+
+    st.subheader("PCA 2D Visualization")
+
+    pca = PCA(n_components=2, random_state=42)
+    X2 = pca.fit_transform(X_scaled)
+
+    fig2, ax2 = plt.subplots(1, 2, figsize=(12, 5))
+
+    ax2[0].scatter(X2[:, 0], X2[:, 1], c=agg["cluster_kmeans"])
+    ax2[0].set_title("PCA - K-Means")
+
+    ax2[1].scatter(X2[:, 0], X2[:, 1], c=agg["cluster_dbscan"])
+    ax2[1].set_title("PCA - DBSCAN")
+
+    st.pyplot(fig2)
+
+# ---------------------------------------------------------
+# TAB 5 – DOWNLOAD
+# ---------------------------------------------------------
+with tab5:
+    st.subheader("Unduh Hasil")
+
+    def to_excel_bytes(df1, df2):
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine="openpyxl") as writer:
+            df1.to_excel(writer, index=False, sheet_name="hasil_segmentasi")
+            df2.to_excel(writer, index=False, sheet_name="evaluasi")
+        return output.getvalue()
+
+    st.download_button(
+        label="⬇️ Download hasil_segmentasi.xlsx",
+        data=to_excel_bytes(agg, eval_df),
+        file_name="hasil_segmentasi.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
