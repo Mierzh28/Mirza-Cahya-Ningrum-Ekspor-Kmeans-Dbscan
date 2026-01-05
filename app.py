@@ -340,6 +340,8 @@ with tab4:
     ax[1].set_ylabel("std_transaksi_bulanan")
 
     st.pyplot(fig_scatter)
+    st.markdown("---")
+
 
     # -------- TOP 5 CHART (FIXED - PASTI MUNCUL) --------
     st.subheader("Top 5 Perusahaan Paling Aktif (Total Transaksi)")
